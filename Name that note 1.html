@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Name that Note!</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/1.2.89/vexflow-min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
+    
+    body {
+      text-align: center; 
+      font-family: Arial, sans-serif; 
+      background: url('https://i.imgur.com/HeMVoxP.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+    /* New styling for the game title */
+    #game-title {
+      font-size: 60px;
+      color: #fff;
+      text-shadow: 4px 4px 6px rgba(0,0,0,0.7);
+      background-color: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 10px;
+      margin-top: 20px;
+    }
+    #staff-container {
+      display: flex; 
+      justify-content: center; 
+      margin-top: 50px;
+      background-color: white;
+      padding: 10px;
+      border-radius: 10px;
+    }
+    canvas {
+      border: 2px solid black; 
+      background-color: rgba(255, 255, 255, 0.9); 
+      border-radius: 10px; 
+      padding: 10px;
+    }
+    .note-buttons button {
+      font-size: 30px;
+      margin: 10px;
+      padding: 15px;
+      cursor: pointer;
+      border-radius: 10px;
+      background-color: #ffcc00;
+      border: none;
+    }
+    .bubble-text {
+      font-family: 'Fredoka One', cursive;
+      font-size: 28px;
+      color: white;
+      background: linear-gradient(to right, #ff7eb3, #ff758c);
+      padding: 10px;
+      border-radius: 15px;
+      display: inline-block;
+      margin: 5px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+    }
+    #scoreboard, #timer, #leaderboard {
+      margin-top: 10px;
+    }
+    /* Pig Combo styling with a 3s fade transition */
+    #pig-combo {
+      display: none;
+      opacity: 0;
+      transition: opacity 3s ease-out;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-family: 'Fredoka One', cursive;
+      font-size: 40px;
+      color: white;
+      text-shadow: 3px 3px 5px rgba(0,0,0,0.4);
+    }
+    #pig-combo img {
+      width: 600px;
+      height: auto;
+    }
+    /* Level Overlay styling */
+    #level-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: none;
+      justify-content: center;
+      align-items: center;
+      font-family: 'Fredoka One', cursive;
+      font-size: 80px;
+      color: white;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 3s ease;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="game-title">🎵 N A M E  🎵  T H A T  🎵  N O T E ! 🎵</h1>
+  <div id="scoreboard">
+    <span class="bubble-text">Score: <span id="score">0</span></span>
+    <span class="bubble-text">Streak: <span id="streak">0</span></span>
+    <span class="bubble-text">Level: <span id="level">1</span></span>
+  </div>
+  <div id="timer">
+    <span class="bubble-text">Time Left: <span id="time">60</span> seconds</span>
+  </div>
+  <div id="staff-container">
+    <div id="staff"></div>
+  </div>
+  <div id="note-buttons" class="note-buttons"></div>
+  <div id="leaderboard">
+    <span class="bubble-text">High Score: <span id="high-score">0</span></span>
+  </div>
+  <div id="pig-combo">
+    <img src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/campbell%20combo%20image.webp" alt="Pig Combo!">
+    <p>Pig Combo! Streak: <span id="pig-streak"></span></p>
+  </div>
+  <!-- Level overlay for new levels -->
+  <div id="level-overlay"></div>
+  <audio id="correct-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/ding-126626.mp3"></audio>
+  <audio id="incorrect-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/error.mp3"></audio>
+  <audio id="bonus-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/campbell%20combo.mp3"></audio>
+  <script>
+    const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
+    
+    // Levels: each new level adds an additional note.
+    let levels = [
+      ['C/4', 'D/4', 'E/4'],                     // Level 1
+      ['C/4', 'D/4', 'E/4', 'F/4'],                // Level 2 (adds F)
+      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4'],           // Level 3 (adds G)
+      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4'],      // Level 4 (adds A)
+      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4', 'B/4'],   // Level 5 (adds B)
+      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4', 'B/4', 'C/5'] // Level 6 (adds high C)
+    ];
+    let level = 1;
+    let correctNote;
+    let score = 0;
+    let streak = 0;
+    let timeLeft = 60;
+    let timerStarted = false;
+    let timerInterval;
+    
+    // Retrieve high score from localStorage if exists.
+    let highScore = localStorage.getItem("highScore") || 0;
+    document.getElementById("high-score").innerText = highScore;
+    
+    // Show the level overlay when a new level is reached.
+    function showLevelOverlay(levelText) {
+      let overlay = document.getElementById("level-overlay");
+      overlay.innerText = "LEVEL " + levelText;
+      overlay.style.display = "flex";
+      overlay.style.opacity = 1;
+      // Start fading after 1 second
+      setTimeout(() => {
+        overlay.style.opacity = 0;
+      }, 1000);
+      // Hide after 4 seconds
+      setTimeout(() => {
+        overlay.style.display = "none";
+      }, 4000);
+    }
+    
+    // Start the timer for a level.
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("time").innerText = timeLeft;
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          // Update high score when timer stops.
+          if (score > highScore) {
+            highScore = score;
+            localStorage.setItem("highScore", highScore);
+            document.getElementById("high-score").innerText = highScore;
+          }
+          alert("Time's up! Final score: " + score);
+          restartGame();
+        }
+      }, 1000);
+    }
+    
+    // Reset the timer for a new level.
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timeLeft = 60;
+      document.getElementById("time").innerText = timeLeft;
+      startTimer();
+    }
+    
+    // Restart the game from the beginning.
+    function restartGame() {
+      clearInterval(timerInterval);
+      timerStarted = false;
+      score = 0;
+      streak = 0;
+      level = 1;
+      timeLeft = 60;
+      document.getElementById("score").innerText = score;
+      document.getElementById("streak").innerText = streak;
+      document.getElementById("level").innerText = level;
+      document.getElementById("time").innerText = timeLeft;
+      drawNote();
+    }
+    
+    // Generate clickable buttons for the current level.
+    function createNoteButtons() {
+      const container = document.getElementById("note-buttons");
+      container.innerHTML = "";
+      levels[level - 1].forEach(note => {
+        let button = document.createElement("button");
+        button.innerText = note[0];
+        button.onclick = () => {
+          if (!timerStarted) {
+            timerStarted = true;
+            startTimer();
+          }
+          checkAnswer(note[0]);
+        };
+        container.appendChild(button);
+      });
+    }
+    
+    // Update level based on score and reset timer if level increases.
+    function updateLevel() {
+      let newLevel = Math.min(levels.length, Math.floor(score / 200) + 1);
+      if (newLevel !== level) {
+        level = newLevel;
+        document.getElementById("level").innerText = level;
+        showLevelOverlay(level);
+        resetTimer();
+      }
+    }
+    
+    function checkAnswer(input) {
+      if (!timerStarted) {
+        timerStarted = true;
+        startTimer();
+      }
+      let expectedNote = correctNote[0].toUpperCase();
+      if (input.toUpperCase() === expectedNote) {
+        document.getElementById("correct-sound").play();
+        score += 10;
+        streak++;
+        document.getElementById("score").innerText = score;
+        document.getElementById("streak").innerText = streak;
+        // Combo logic: show pig combo if streak is a multiple of 5.
+        if (streak % 5 === 0) {
+          let pigCombo = document.getElementById("pig-combo");
+          pigCombo.style.display = "block";
+          pigCombo.style.opacity = 1;
+          document.getElementById("pig-streak").innerText = streak;
+          document.getElementById("bonus-sound").play();
+          // After a short delay, fade the image away over 3 seconds.
+          setTimeout(() => {
+            pigCombo.style.opacity = 0;
+            setTimeout(() => {
+              pigCombo.style.display = "none";
+            }, 3000);
+          }, 200);
+        }
+      } else {
+        document.getElementById("incorrect-sound").play();
+        streak = 0;
+        document.getElementById("streak").innerText = streak;
+      }
+      updateLevel();
+      drawNote();
+    }
+    
+    // Keyboard input: if a valid note key is pressed, check the answer.
+    document.addEventListener("keydown", function(event) {
+      let key = event.key.toUpperCase();
+      if (levels[level - 1].some(note => note[0].toUpperCase() === key)) {
+        if (!timerStarted) {
+          timerStarted = true;
+          startTimer();
+        }
+        checkAnswer(key);
+      }
+    });
+    
+    function drawNote() {
+      document.getElementById("staff").innerHTML = "<svg width='600' height='150'></svg>";
+      let notes = levels[level - 1];
+      correctNote = notes[Math.floor(Math.random() * notes.length)];
+      const renderer = new Renderer(document.getElementById("staff").querySelector("svg"), Renderer.Backends.SVG);
+      renderer.resize(600, 150);
+      const context = renderer.getContext();
+      const stave = new Stave(10, 20, 550);
+      stave.addClef("treble").setContext(context).draw();
+      const note = new StaveNote({ keys: [correctNote], duration: "q" });
+      const voice = new Voice({ num_beats: 1, beat_value: 4 }).addTickables([note]);
+      new Formatter().joinVoices([voice]).format([voice], 500);
+      voice.draw(context, stave);
+      createNoteButtons();
+    }
+    
+    drawNote();
+  </script>
+</body>
+</html>
