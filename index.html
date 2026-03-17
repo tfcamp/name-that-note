@@ -1,20 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Name that Note!</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vexflow/1.2.89/vexflow-min.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap');
-    
+
     body {
-      text-align: center; 
-      font-family: Arial, sans-serif; 
+      text-align: center;
+      font-family: 'Fredoka One', cursive;
       background: url('https://i.imgur.com/HeMVoxP.png') no-repeat center center fixed;
       background-size: cover;
+      overflow: hidden;
     }
-    /* New styling for the game title */
+
     #game-title {
       font-size: 60px;
       color: #fff;
@@ -24,32 +25,11 @@
       border-radius: 10px;
       margin-top: 20px;
     }
-    #staff-container {
-      display: flex; 
-      justify-content: center; 
-      margin-top: 50px;
-      background-color: white;
-      padding: 10px;
-      border-radius: 10px;
-    }
-    canvas {
-      border: 2px solid black; 
-      background-color: rgba(255, 255, 255, 0.9); 
-      border-radius: 10px; 
-      padding: 10px;
-    }
-    .note-buttons button {
-      font-size: 30px;
-      margin: 10px;
-      padding: 15px;
-      cursor: pointer;
-      border-radius: 10px;
-      background-color: #ffcc00;
-      border: none;
-    }
+
+    #scoreboard { margin-top: 10px; }
+
     .bubble-text {
-      font-family: 'Fredoka One', cursive;
-      font-size: 28px;
+      font-size: 26px;
       color: white;
       background: linear-gradient(to right, #ff7eb3, #ff758c);
       padding: 10px;
@@ -58,249 +38,1178 @@
       margin: 5px;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
-    #scoreboard, #timer, #leaderboard {
-      margin-top: 10px;
+
+    #staff {
+      margin: 30px auto;
+      width: 300px;
+      height: 150px;
+      background-color: white;
+      border-radius: 10px;
+      padding: 10px;
     }
-    /* Pig Combo styling with a 3s fade transition */
-    #pig-combo {
+
+    #keyboard {
+      margin: 40px auto;
+      position: relative;
+      height: 200px;
+      background: #ccc;
+      border: 2px solid #444;
+    }
+
+    .white-key {
+      position: absolute;
+      width: 40px;
+      height: 200px;
+      background: white;
+      border: 1px solid black;
+      z-index: 1;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 70ms ease, filter 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    }
+
+    .black-key {
+      position: absolute;
+      width: 25px;
+      height: 120px;
+      background: black;
+      z-index: 2;
+      top: 0;
+      cursor: pointer;
+      user-select: none;
+      pointer-events: auto;
+      border-radius: 0 0 5px 5px;
+      transition: transform 70ms ease, filter 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+    }
+
+    .white-key-label {
+      position: absolute;
+      bottom: 5px;
+      width: 100%;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    /* =========================
+       Key lighting
+       ========================= */
+    .key-press {
+      transform: translateY(2px) scale(0.985);
+      filter: brightness(0.95);
+    }
+
+    .key-correct.white-key {
+      background-color: #b9ffbf;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.15) inset, 0 0 18px rgba(0, 255, 120, 0.75);
+      filter: brightness(1.05);
+    }
+
+    .key-wrong.white-key {
+      background-color: #ffb9b9;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.15) inset, 0 0 18px rgba(255, 60, 60, 0.75);
+      filter: brightness(1.05);
+    }
+
+    .key-correct.black-key {
+      background-color: #1f8a3a;
+      box-shadow: 0 0 18px rgba(0, 255, 120, 0.7);
+      filter: brightness(1.1);
+    }
+
+    .key-wrong.black-key {
+      background-color: #8a1f1f;
+      box-shadow: 0 0 18px rgba(255, 60, 60, 0.7);
+      filter: brightness(1.1);
+    }
+
+    #pig-combo, #wiggles-combo {
       display: none;
-      opacity: 0;
-      transition: opacity 3s ease-out;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1000;
+    }
+
+    #pig-combo img, #wiggles-combo img {
+      width: 500px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+    }
+
+    #level-up-message {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      font-family: 'Fredoka One', cursive;
+      color: #ff4500;
+      text-shadow: 4px 4px 6px rgba(0,0,0,0.7);
+      background: linear-gradient(to right, red, orange, yellow, green, blue, indigo, violet);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      z-index: 1001;
+      animation: levelFirework 1.5s ease-out;
+    }
+
+    #bonus-points {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 50px;
+      color: gold;
+      font-family: 'Fredoka One', cursive;
+      text-shadow: 3px 3px 8px rgba(0, 0, 0, 0.7);
+      animation: fadeOutUp 3s forwards;
+      z-index: 1002;
+    }
+
+    #unlock-toast {
+      display: none;
+      position: fixed;
+      top: 18%;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1100;
+      font-size: 44px;
+      color: #fff;
+      padding: 14px 22px;
+      border-radius: 18px;
+      background: linear-gradient(to right, #00c6ff, #0072ff);
+      text-shadow: 3px 3px 8px rgba(0,0,0,0.55);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.35);
+      animation: popFade 2.6s ease-out forwards;
+      user-select: none;
+    }
+
+    @keyframes popFade {
+      0%   { opacity: 0; transform: translateX(-50%) scale(0.75); }
+      18%  { opacity: 1; transform: translateX(-50%) scale(1.08); }
+      30%  { opacity: 1; transform: translateX(-50%) scale(1.00); }
+      100% { opacity: 0; transform: translateX(-50%) scale(0.98); }
+    }
+
+    @keyframes fadeOutUp {
+      0% { opacity: 1; transform: translate(-50%, 0); }
+      100% { opacity: 0; transform: translate(-50%, -120px); }
+    }
+
+    @keyframes spinFlyVar {
+      0% { opacity: 1; transform: translate(-50%, -50%) rotate(0deg) scale(1); }
+      100% {
+        opacity: 0;
+        transform:
+          translate(calc(-50% + var(--fly-x, 150vw)), calc(-50% + var(--fly-y, -150vh)))
+          rotate(var(--spin-deg, 720deg))
+          scale(0.1);
+      }
+    }
+
+    @keyframes levelFirework {
+      0% {opacity: 0; transform: translate(-50%, -50%) scale(0.5);}
+      50% {opacity: 1; transform: translate(-50%, -50%) scale(1.2);}
+      100% {opacity: 0; transform: translate(-50%, -50%) scale(1);}
+    }
+
+    /* =========================
+       Pig Avatar Panel (emoji + overlay)
+       ========================= */
+    #avatar-panel {
+      position: fixed;
+      right: 20px;
+      top: 120px;
+      width: 240px;
+      padding: 14px 12px;
+      border-radius: 16px;
+      background: rgba(0, 0, 0, 0.45);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.35);
+      color: #fff;
+      z-index: 900;
+      user-select: none;
+    }
+
+    #avatar-title { font-size: 18px; margin-bottom: 8px; opacity: 0.95; }
+
+    #pig-avatar {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.12);
+      overflow: hidden;
+    }
+
+    #pig-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      display: grid;
+      place-items: center;
+      transform-origin: center;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,0.45));
+    }
+
+    #pig-base {
+      font-size: 84px;
+      line-height: 1;
+      transform-origin: center;
+    }
+
+    #pig-addon {
+      position: absolute;
+      font-size: 34px;
+      line-height: 1;
+      pointer-events: none;
+      transform-origin: center;
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+    }
+
+    .addon-none #pig-addon { display: none; }
+
+    .addon-hat #pig-addon { top: -6px; left: 50%; transform: translateX(-50%); }
+    .addon-crown #pig-addon { top: -10px; left: 50%; transform: translateX(-50%); font-size: 36px; }
+    .addon-glasses #pig-addon { top: 40px; left: 50%; transform: translateX(-50%); font-size: 28px; }
+    .addon-mask #pig-addon { top: 44px; left: 50%; transform: translateX(-50%); font-size: 28px; }
+    .addon-side #pig-addon { top: 70px; left: 78px; transform: rotate(-10deg); font-size: 28px; }
+    .addon-aura #pig-addon { top: -10px; left: -10px; font-size: 46px; opacity: 0.9; }
+    .addon-badge #pig-addon { top: 78px; left: 76px; font-size: 26px; }
+
+    #pig-tier-label {
+      margin-top: 10px;
+      font-size: 16px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.12);
+      display: inline-block;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Pig motion tiers (0..9) */
+    @keyframes pigWiggle { 0%,100% { transform: rotate(-2deg);} 50% { transform: rotate(2deg);} }
+    @keyframes pigBounce { 0%,100% { transform: translateY(0);} 50% { transform: translateY(-6px);} }
+    @keyframes pigChaos {
+      0%,100% { transform: translate(0,0) rotate(-2deg); }
+      25% { transform: translate(2px,-4px) rotate(2deg); }
+      50% { transform: translate(-2px,-2px) rotate(-3deg); }
+      75% { transform: translate(3px,0) rotate(3deg); }
+    }
+    @keyframes pigSpinny {
+      0% { transform: rotate(0deg) scale(1); }
+      100% { transform: rotate(360deg) scale(1.05); }
+    }
+    @keyframes pigVibrate {
+      0%,100% { transform: translate(0,0) rotate(0); }
+      20% { transform: translate(1px,-1px) rotate(-2deg); }
+      40% { transform: translate(-1px,1px) rotate(2deg); }
+      60% { transform: translate(1px,0) rotate(-1deg); }
+      80% { transform: translate(-1px,0) rotate(1deg); }
+    }
+
+    .tier-0  #pig-wrap { }
+    .tier-1  #pig-wrap { animation: pigWiggle 1.3s ease-in-out infinite; }
+    .tier-2  #pig-wrap { animation: pigWiggle 1.0s ease-in-out infinite; }
+    .tier-3  #pig-wrap { animation: pigBounce 0.95s ease-in-out infinite; }
+    .tier-4  #pig-wrap { animation: pigBounce 0.8s ease-in-out infinite; }
+    .tier-5  #pig-wrap { animation: pigChaos 0.6s ease-in-out infinite; }
+    .tier-6  #pig-wrap { animation: pigChaos 0.52s ease-in-out infinite; }
+    .tier-7  #pig-wrap { animation: pigSpinny 1.2s linear infinite; }
+    .tier-8  #pig-wrap { animation: pigSpinny 0.9s linear infinite; }
+    .tier-9  #pig-wrap { animation: pigVibrate 0.22s linear infinite; }
+
+    @media (max-width: 900px) {
+      #avatar-panel { right: 10px; top: 92px; width: 210px; }
+      #pig-avatar { height: 145px; }
+      #pig-base { font-size: 74px; }
+      #pig-wrap { width: 112px; height: 112px; }
+    }
+
+    /* =========================
+       FINAL BOSS overlay + confetti
+       ========================= */
+    #final-boss-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 5000;
+      background: radial-gradient(circle at 50% 40%, rgba(255,255,255,0.14), rgba(0,0,0,0.82));
+      backdrop-filter: blur(2px);
+      user-select: none;
+    }
+
+    #final-boss-card {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-family: 'Fredoka One', cursive;
-      font-size: 40px;
-      color: white;
-      text-shadow: 3px 3px 5px rgba(0,0,0,0.4);
+      width: min(760px, 92vw);
+      padding: 22px 18px 18px;
+      border-radius: 22px;
+      background: rgba(0,0,0,0.55);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.55);
+      color: #fff;
     }
-    #pig-combo img {
-      width: 600px;
-      height: auto;
+
+    #final-boss-title {
+      font-size: 56px;
+      letter-spacing: 1px;
+      margin: 0 0 10px;
+      text-shadow: 4px 4px 10px rgba(0,0,0,0.6);
     }
-    /* Level Overlay styling */
-    #level-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: none;
-      justify-content: center;
-      align-items: center;
-      font-family: 'Fredoka One', cursive;
-      font-size: 80px;
-      color: white;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 1000;
-      opacity: 0;
-      transition: opacity 3s ease;
+
+    #final-boss-sub {
+      font-size: 22px;
+      margin: 0 0 14px;
+      opacity: 0.95;
+    }
+
+    #final-boss-pig {
+      font-size: 96px;
+      margin: 10px 0 12px;
+      filter: drop-shadow(0 18px 18px rgba(0,0,0,0.45));
+      animation: bossPulse 900ms ease-in-out infinite;
+    }
+
+    #final-boss-bonus {
+      font-size: 34px;
+      margin: 0;
+      color: gold;
+      text-shadow: 3px 3px 10px rgba(0,0,0,0.6);
+    }
+
+    @keyframes bossPulse {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+
+    #confetti {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      pointer-events: none;
+    }
+
+    .confetti {
+      position: absolute;
+      top: -12vh;
+      width: 10px;
+      height: 16px;
+      border-radius: 3px;
+      opacity: 0.95;
+      animation: confettiFall 1700ms linear forwards;
+      transform: rotate(0deg);
+    }
+
+    @keyframes confettiFall {
+      0% { transform: translateY(0) rotate(0deg); opacity: 0.95; }
+      100% { transform: translateY(120vh) rotate(900deg); opacity: 1; }
     }
   </style>
 </head>
+
 <body>
-  <h1 id="game-title">🎵 N A M E  🎵  T H A T  🎵  N O T E ! 🎵</h1>
+  <h1 id="game-title">🎵 N A M E 🎵 T H A T 🎵 N O T E ! 🎵</h1>
+
   <div id="scoreboard">
     <span class="bubble-text">Score: <span id="score">0</span></span>
     <span class="bubble-text">Streak: <span id="streak">0</span></span>
     <span class="bubble-text">Level: <span id="level">1</span></span>
-  </div>
-  <div id="timer">
-    <span class="bubble-text">Time Left: <span id="time">60</span> seconds</span>
-  </div>
-  <div id="staff-container">
-    <div id="staff"></div>
-  </div>
-  <div id="note-buttons" class="note-buttons"></div>
-  <div id="leaderboard">
+    <span class="bubble-text">To Level Up: <span id="to-next">10</span></span>
     <span class="bubble-text">High Score: <span id="high-score">0</span></span>
   </div>
-  <div id="pig-combo">
-    <img src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/campbell%20combo%20image.webp" alt="Pig Combo!">
-    <p>Pig Combo! Streak: <span id="pig-streak"></span></p>
+
+  <div id="staff"></div>
+  <div id="keyboard"></div>
+
+  <div id="pig-combo"><img src="https://i.imgur.com/cvAZw9F.png" alt="Campbell Combo" /></div>
+  <div id="wiggles-combo">
+    <img id="wiggles-img" src="https://i.imgur.com/rnLv8Zb.jpeg" alt="Wiggles Combo" />
   </div>
-  <!-- Level overlay for new levels -->
-  <div id="level-overlay"></div>
+
+  <div id="level-up-message">LEVEL UP!</div>
+  <div id="bonus-points">+BONUS!</div>
+  <div id="unlock-toast">Unlocked!</div>
+
+  <!-- FINAL BOSS overlay -->
+  <div id="final-boss-overlay">
+    <div id="confetti"></div>
+    <div id="final-boss-card">
+      <div id="final-boss-title">FINAL BOSS PIG!</div>
+      <div id="final-boss-sub">You unlocked Pig 50 🐷👑</div>
+      <div id="final-boss-pig">🐷👑🔥⚡💥</div>
+      <div id="final-boss-bonus">+1000 BONUS!</div>
+    </div>
+  </div>
+
+  <div id="avatar-panel">
+    <div id="avatar-title">🐽 Pig Progress</div>
+    <div id="pig-avatar" class="tier-0 addon-none">
+      <div id="pig-wrap" aria-label="Pig avatar">
+        <div id="pig-base">🐷</div>
+        <div id="pig-addon">🧢</div>
+      </div>
+    </div>
+    <div id="pig-tier-label">Pig 1/50 — Plain Pig</div>
+  </div>
+
   <audio id="correct-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/ding-126626.mp3"></audio>
-  <audio id="incorrect-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/error.mp3"></audio>
+  <audio id="incorrect-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/error-2-36058.mp3"></audio>
   <audio id="bonus-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/campbell%20combo.mp3"></audio>
+  <audio id="wiggles-sound" src="https://raw.githubusercontent.com/tfcamp/name-that-note/main/wiggles%20combo.mp3"></audio>
+
   <script>
-    const { Renderer, Stave, StaveNote, Voice, Formatter } = Vex.Flow;
-    
-    // Levels: each new level adds an additional note.
-    let levels = [
-      ['C/4', 'D/4', 'E/4'],                     // Level 1
-      ['C/4', 'D/4', 'E/4', 'F/4'],                // Level 2 (adds F)
-      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4'],           // Level 3 (adds G)
-      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4'],      // Level 4 (adds A)
-      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4', 'B/4'],   // Level 5 (adds B)
-      ['C/4', 'D/4', 'E/4', 'F/4', 'G/4', 'A/4', 'B/4', 'C/5'] // Level 6 (adds high C)
-    ];
-    let level = 1;
-    let correctNote;
+    const VF = Vex.Flow;
+
+    const COMBO_ANIM_MS = 5200;
+    const BONUS_MSG_MS = 3000;
+
+    const CORRECTS_PER_LEVEL = 10;
+
+    let renderer, context, stave;
+    let correctNote = null;
+    let correctMidi = null;
+
     let score = 0;
+    let level = 1;
     let streak = 0;
-    let timeLeft = 60;
-    let timerStarted = false;
-    let timerInterval;
-    
-    // Retrieve high score from localStorage if exists.
-    let highScore = localStorage.getItem("highScore") || 0;
-    document.getElementById("high-score").innerText = highScore;
-    
-    // Show the level overlay when a new level is reached.
-    function showLevelOverlay(levelText) {
-      let overlay = document.getElementById("level-overlay");
-      overlay.innerText = "LEVEL " + levelText;
-      overlay.style.display = "flex";
-      overlay.style.opacity = 1;
-      // Start fading after 1 second
+    let correctsThisLevel = 0;
+
+    let streakFromLevel10 = 0;
+    let streakFromLevel15 = 0;
+
+    let inputLocked = false;
+
+    const scoreEl = document.getElementById("score");
+    const streakEl = document.getElementById("streak");
+    const levelEl = document.getElementById("level");
+    const toNextEl = document.getElementById("to-next");
+    const highScoreEl = document.getElementById("high-score");
+    const staffEl = document.getElementById("staff");
+    const keyboardEl = document.getElementById("keyboard");
+    const unlockToastEl = document.getElementById("unlock-toast");
+
+    const pigAvatarEl = document.getElementById("pig-avatar");
+    const pigAddonEl = document.getElementById("pig-addon");
+    const pigTierLabelEl = document.getElementById("pig-tier-label");
+
+    const finalBossOverlayEl = document.getElementById("final-boss-overlay");
+    const confettiEl = document.getElementById("confetti");
+
+    let highScore = Number(localStorage.getItem("highScore") || 0);
+    highScoreEl.innerText = String(highScore);
+
+    let flatsEverUnlocked = localStorage.getItem("flatsEverUnlocked") === "1";
+    let sharpsEverUnlocked = localStorage.getItem("sharpsEverUnlocked") === "1";
+
+    // One-time final boss (persisted)
+    let finalBossUnlocked = localStorage.getItem("finalBossUnlocked") === "1";
+
+    function playSound(id) {
+      const sound = document.getElementById(id);
+      if (!sound) return;
+      try {
+        sound.currentTime = 0;
+        const p = sound.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      } catch (_) {}
+    }
+
+    function showUnlockToast(text) {
+      unlockToastEl.textContent = text;
+      unlockToastEl.style.display = "block";
+      unlockToastEl.style.animation = "none";
+      unlockToastEl.offsetHeight;
+      unlockToastEl.style.animation = "popFade 2.6s ease-out forwards";
+      setTimeout(() => { unlockToastEl.style.display = "none"; }, 2700);
+    }
+
+    // =========================
+    // Notes + MIDI helpers
+    // =========================
+    const NOTE_TO_SEMITONE = {
+      "C": 0,  "C#": 1, "DB": 1,
+      "D": 2,  "D#": 3, "EB": 3,
+      "E": 4,
+      "F": 5,  "F#": 6, "GB": 6,
+      "G": 7,  "G#": 8, "AB": 8,
+      "A": 9,  "A#": 10,"BB": 10,
+      "B": 11,
+    };
+
+    function noteStringToMidi(noteStr) {
+      const [nameRaw, octaveRaw] = String(noteStr).toUpperCase().split("/");
+      const name = (nameRaw || "").trim();
+      const octave = Number(octaveRaw);
+      const semi = NOTE_TO_SEMITONE[name];
+      if (!Number.isFinite(octave) || semi === undefined) return null;
+      return (octave + 1) * 12 + semi;
+    }
+
+    function midiToFreq(midi) {
+      return 440 * Math.pow(2, (midi - 69) / 12);
+    }
+
+    function parsePitch(noteStr) {
+      const [nameRaw, octaveRaw] = String(noteStr).split("/");
+      const octave = Number(octaveRaw);
+      const name = (nameRaw || "").trim();
+      const letter = (name[0] || "").toLowerCase();
+      const accidental = name.length > 1 ? name[1] : "";
+      return { letter, accidental, octave };
+    }
+
+    // =========================
+    // Pools
+    // =========================
+    const NATURAL_NOTES = [
+      "C/4", "D/4", "E/4", "F/4", "G/4", "A/4", "B/4",
+      "C/5", "D/5", "E/5", "F/5"
+    ];
+
+    const FLAT_NOTES = [
+      "Db/4", "Eb/4", "Gb/4", "Ab/4", "Bb/4",
+      "Db/5", "Eb/5"
+    ];
+
+    const SHARP_NOTES = [
+      "C#/4", "D#/4", "F#/4", "G#/4", "A#/4",
+      "C#/5", "D#/5"
+    ];
+
+    function flatsUnlockedNow() {
+      return flatsEverUnlocked || (level >= 10 && streakFromLevel10 >= 50);
+    }
+
+    function sharpsUnlockedNow() {
+      return sharpsEverUnlocked || (level >= 15 && streakFromLevel15 >= 50);
+    }
+
+    function checkUnlockTransitions() {
+      const flatsNow = flatsUnlockedNow();
+      const sharpsNow = sharpsUnlockedNow();
+
+      if (flatsNow && !flatsEverUnlocked) {
+        flatsEverUnlocked = true;
+        localStorage.setItem("flatsEverUnlocked", "1");
+        showUnlockToast("🎉 Flats unlocked!");
+      }
+
+      if (sharpsNow && !sharpsEverUnlocked) {
+        sharpsEverUnlocked = true;
+        localStorage.setItem("sharpsEverUnlocked", "1");
+        showUnlockToast("⚡ Sharps unlocked!");
+      }
+    }
+
+    function getBasePool() {
+      const pool = [...NATURAL_NOTES];
+      if (flatsUnlockedNow()) pool.push(...FLAT_NOTES);
+      if (sharpsUnlockedNow()) pool.push(...SHARP_NOTES);
+      return pool;
+    }
+
+    function getLevelNotes() {
+      const pool = getBasePool();
+      return pool.slice(0, Math.min(pool.length, level + 2));
+    }
+
+    // =========================
+    // Pig styles (50) — base pig + ONE overlay addon
+    // Changes every 2 levels: idx = floor((level - 1) / 2)
+    // =========================
+    const PIG_STYLES = [
+      { name: "Plain Pig", addon: "", place: "none" },
+      { name: "Cap Pig", addon: "🧢", place: "hat" },
+      { name: "Fancy Hat Pig", addon: "🎩", place: "hat" },
+      { name: "Crown Pig", addon: "👑", place: "crown" },
+      { name: "Cool Pig", addon: "🕶️", place: "glasses" },
+      { name: "Mask Pig", addon: "🥸", place: "mask" },
+      { name: "Ninja Pig", addon: "🥷", place: "mask" },
+      { name: "Robot Pig", addon: "🤖", place: "mask" },
+      { name: "Alien Pig", addon: "👽", place: "mask" },
+      { name: "Pirate Pig", addon: "🏴‍☠️", place: "hat" },
+
+      { name: "Wizard Pig", addon: "🪄", place: "side" },
+      { name: "Magic Pig", addon: "✨", place: "aura" },
+      { name: "Fire Pig", addon: "🔥", place: "aura" },
+      { name: "Lightning Pig", addon: "⚡", place: "aura" },
+      { name: "Boom Pig", addon: "💥", place: "aura" },
+      { name: "Rainbow Pig", addon: "🌈", place: "aura" },
+      { name: "Star Pig", addon: "🌟", place: "aura" },
+      { name: "Galaxy Pig", addon: "🌌", place: "aura" },
+      { name: "UFO Pig", addon: "🛸", place: "aura" },
+      { name: "Rocket Pig", addon: "🚀", place: "aura" },
+
+      { name: "DJ Pig", addon: "🎧", place: "hat" },
+      { name: "Gamer Pig", addon: "🎮", place: "side" },
+      { name: "Music Pig", addon: "🎸", place: "side" },
+      { name: "Mic Pig", addon: "🎤", place: "side" },
+      { name: "Party Pig", addon: "🎉", place: "aura" },
+      { name: "Disco Pig", addon: "🪩", place: "aura" },
+      { name: "Sparkler Pig", addon: "🎇", place: "aura" },
+      { name: "Confetti Pig", addon: "🎊", place: "aura" },
+      { name: "Medal Pig", addon: "🏅", place: "badge" },
+      { name: "Trophy Pig", addon: "🏆", place: "badge" },
+
+      { name: "Money Pig", addon: "💰", place: "badge" },
+      { name: "Gem Pig", addon: "💎", place: "badge" },
+      { name: "Treasure Pig", addon: "🧰", place: "side" },
+      { name: "Tool Pig", addon: "🛠️", place: "side" },
+      { name: "Chef Pig", addon: "🧑‍🍳", place: "hat" },
+      { name: "Science Pig", addon: "🧪", place: "side" },
+      { name: "Doctor Pig", addon: "🩺", place: "side" },
+      { name: "Detective Pig", addon: "🕵️", place: "hat" },
+      { name: "Knight Pig", addon: "🛡️", place: "side" },
+      { name: "Sword Pig", addon: "⚔️", place: "side" },
+
+      { name: "Skull Pig", addon: "💀", place: "mask" },
+      { name: "Ghost Pig", addon: "👻", place: "aura" },
+      { name: "Monster Pig", addon: "👾", place: "mask" },
+      { name: "Dragon Pig", addon: "🐉", place: "aura" },
+      { name: "Tornado Pig", addon: "🌪️", place: "aura" },
+      { name: "Portal Pig", addon: "🌀", place: "aura" },
+      { name: "Crystal Pig", addon: "🔮", place: "side" },
+      { name: "Ultra Pig", addon: "💫", place: "aura" },
+      { name: "Chaos Pig", addon: "😵‍💫", place: "mask" },
+      { name: "Final Boss Pig", addon: "☠️", place: "aura" },
+    ];
+
+    function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+    function currentPigIndexForLevel(lvl) {
+      return clamp(Math.floor((lvl - 1) / 2), 0, PIG_STYLES.length - 1);
+    }
+
+    function spawnConfetti(count = 70) {
+      confettiEl.innerHTML = "";
+      for (let i = 0; i < count; i++) {
+        const c = document.createElement("div");
+        c.className = "confetti";
+        c.style.left = `${Math.random() * 100}vw`;
+        c.style.animationDelay = `${Math.random() * 0.45}s`;
+        c.style.width = `${8 + Math.random() * 10}px`;
+        c.style.height = `${10 + Math.random() * 14}px`;
+        c.style.borderRadius = `${2 + Math.random() * 4}px`;
+        c.style.background = `hsl(${Math.floor(Math.random() * 360)}, 92%, 62%)`;
+        c.style.transform = `rotate(${Math.floor(Math.random() * 360)}deg)`;
+        confettiEl.appendChild(c);
+      }
+    }
+
+    function showFinalBossCelebration() {
+      if (finalBossUnlocked) return;
+
+      finalBossUnlocked = true;
+      localStorage.setItem("finalBossUnlocked", "1");
+
+      inputLocked = true;
+
+      score += 1000;
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", String(highScore));
+      }
+      syncUi();
+
+      spawnConfetti(90);
+      finalBossOverlayEl.style.display = "block";
+      playSound("wiggles-sound");
+
       setTimeout(() => {
-        overlay.style.opacity = 0;
-      }, 1000);
-      // Hide after 4 seconds
+        finalBossOverlayEl.style.display = "none";
+        confettiEl.innerHTML = "";
+        inputLocked = false;
+      }, 3200);
+    }
+
+    function updatePigAvatar() {
+      const idx = currentPigIndexForLevel(level);
+      const style = PIG_STYLES[idx];
+
+      const animTier = clamp(Math.floor(idx / 5), 0, 9);
+      pigAvatarEl.className = `tier-${animTier} addon-${style.place}`;
+
+      pigAddonEl.textContent = style.addon || "";
+      pigTierLabelEl.textContent = `Pig ${idx + 1}/${PIG_STYLES.length} — ${style.name}`;
+
+      if (idx === PIG_STYLES.length - 1) showFinalBossCelebration();
+    }
+
+    function syncUi() {
+      scoreEl.innerText = String(score);
+      streakEl.innerText = String(streak);
+      levelEl.innerText = String(level);
+      toNextEl.innerText = String(Math.max(0, CORRECTS_PER_LEVEL - correctsThisLevel));
+      highScoreEl.innerText = String(highScore);
+      updatePigAvatar();
+    }
+
+    // =========================
+    // Key lighting helpers
+    // =========================
+    const KEY_PRESS_MS = 90;
+    const KEY_FLASH_MS = 260;
+
+    function normalizeNoteKey(noteStr) {
+      return String(noteStr || "").toUpperCase().trim();
+    }
+
+    function flashKey(el, ok) {
+      if (!el) return;
+
+      el.classList.remove("key-correct", "key-wrong");
+
+      el.classList.add("key-press");
+      setTimeout(() => el.classList.remove("key-press"), KEY_PRESS_MS);
+
+      el.classList.add(ok ? "key-correct" : "key-wrong");
+      setTimeout(() => el.classList.remove("key-correct", "key-wrong"), KEY_FLASH_MS);
+    }
+
+    function findKeyElementForNote(noteStr) {
+      const key = normalizeNoteKey(noteStr);
+      return keyboardEl.querySelector(`[data-note="${CSS.escape(key)}"]`);
+    }
+
+    // =========================
+    // Piano-ish synth + resonance
+    // =========================
+    let audioCtx = null;
+    let masterGain = null;
+    let convolver = null;
+    let reverbMix = null;
+    let dryMix = null;
+
+    function ensureAudioContext() {
+      if (audioCtx) return audioCtx;
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.9;
+
+      dryMix = audioCtx.createGain();
+      dryMix.gain.value = 0.85;
+
+      reverbMix = audioCtx.createGain();
+      reverbMix.gain.value = 0.55;
+
+      convolver = audioCtx.createConvolver();
+      convolver.buffer = createReverbImpulse(audioCtx, { seconds: 2.6, decay: 3.2, preDelayMs: 18 });
+
+      dryMix.connect(masterGain);
+      reverbMix.connect(convolver);
+      convolver.connect(masterGain);
+      masterGain.connect(audioCtx.destination);
+
+      return audioCtx;
+    }
+
+    function createReverbImpulse(ctx, { seconds, decay, preDelayMs }) {
+      const rate = ctx.sampleRate;
+      const length = Math.max(1, Math.floor(seconds * rate));
+      const impulse = ctx.createBuffer(2, length, rate);
+      const preDelaySamples = Math.floor((preDelayMs / 1000) * rate);
+
+      for (let ch = 0; ch < impulse.numberOfChannels; ch++) {
+        const data = impulse.getChannelData(ch);
+        for (let i = 0; i < length; i++) {
+          if (i < preDelaySamples) { data[i] = 0; continue; }
+          const t = (i - preDelaySamples) / length;
+          const white = (Math.random() * 2 - 1);
+          const damp = 1 - t;
+          data[i] = white * Math.pow(damp, decay);
+        }
+      }
+      return impulse;
+    }
+
+    function velocityForFreq(freq) {
+      if (freq < 180) return 0.22;
+      if (freq < 350) return 0.26;
+      return 0.30;
+    }
+
+    function createHammerNoise(ctx, now, freq) {
+      const dur = 0.03;
+      const bufferSize = Math.floor(ctx.sampleRate * dur);
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / bufferSize;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - t, 2.5);
+      }
+
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+
+      const filt = ctx.createBiquadFilter();
+      filt.type = "bandpass";
+      filt.frequency.setValueAtTime(Math.min(3000, Math.max(800, freq * 6)), now);
+      filt.Q.setValueAtTime(1.2, now);
+
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.18, now);
+      g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+      src.connect(filt);
+      filt.connect(g);
+      src.start(now);
+      src.stop(now + dur + 0.01);
+
+      return g;
+    }
+
+    function playPianoNote(noteStr, { resonateSeconds = 2.2 } = {}) {
+      const ctx = ensureAudioContext();
+      if (ctx.state === "suspended") ctx.resume().catch(() => {});
+
+      const midi = noteStringToMidi(noteStr);
+      if (midi === null) return;
+
+      const freq = midiToFreq(midi);
+      const now = ctx.currentTime;
+
+      const attack = 0.008;
+      const decay = 0.18;
+      const sustain = 0.12;
+      const release = Math.max(0.7, resonateSeconds);
+
+      const noteGain = ctx.createGain();
+      noteGain.gain.setValueAtTime(0.0001, now);
+      noteGain.gain.exponentialRampToValueAtTime(1.0, now + attack);
+      noteGain.gain.exponentialRampToValueAtTime(sustain, now + attack + decay);
+      noteGain.gain.exponentialRampToValueAtTime(0.0001, now + attack + decay + release);
+
+      const body = ctx.createBiquadFilter();
+      body.type = "lowpass";
+      body.frequency.setValueAtTime(Math.min(5200, freq * 18), now);
+      body.Q.setValueAtTime(0.7, now);
+
+      const presence = ctx.createBiquadFilter();
+      presence.type = "peaking";
+      presence.frequency.setValueAtTime(1400, now);
+      presence.Q.setValueAtTime(0.9, now);
+      presence.gain.setValueAtTime(2.2, now);
+
+      const out = ctx.createGain();
+      out.gain.setValueAtTime(velocityForFreq(freq), now);
+
+      out.connect(dryMix);
+      out.connect(reverbMix);
+
+      noteGain.connect(body);
+      body.connect(presence);
+      presence.connect(out);
+
+      const partials = [
+        { mult: 1.0, amp: 1.00, detune: -2 },
+        { mult: 1.0, amp: 0.85, detune: +2 },
+        { mult: 2.0, amp: 0.30, detune: +1 },
+        { mult: 3.0, amp: 0.18, detune: -1 },
+        { mult: 4.0, amp: 0.12, detune: 0 },
+        { mult: 5.0, amp: 0.07, detune: 0 },
+      ];
+
+      const oscillators = [];
+      for (const p of partials) {
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+
+        osc.type = p.mult <= 2 ? "triangle" : "sine";
+        osc.frequency.setValueAtTime(freq * p.mult, now);
+        osc.detune.setValueAtTime(p.detune, now);
+
+        g.gain.setValueAtTime(Math.max(0.0001, p.amp), now);
+
+        osc.connect(g);
+        g.connect(noteGain);
+        oscillators.push(osc);
+      }
+
+      const hammer = createHammerNoise(ctx, now, freq);
+      hammer.connect(noteGain);
+
+      for (const osc of oscillators) osc.start(now);
+
+      const stopAt = now + attack + decay + release + 0.05;
+      for (const osc of oscillators) osc.stop(stopAt);
+
       setTimeout(() => {
-        overlay.style.display = "none";
-      }, 4000);
+        try {
+          hammer.disconnect();
+          noteGain.disconnect();
+          body.disconnect();
+          presence.disconnect();
+          out.disconnect();
+        } catch (_) {}
+      }, Math.ceil((stopAt - now) * 1000) + 50);
     }
-    
-    // Start the timer for a level.
-    function startTimer() {
-      timerInterval = setInterval(() => {
-        timeLeft--;
-        document.getElementById("time").innerText = timeLeft;
-        if (timeLeft <= 0) {
-          clearInterval(timerInterval);
-          // Update high score when timer stops.
-          if (score > highScore) {
-            highScore = score;
-            localStorage.setItem("highScore", highScore);
-            document.getElementById("high-score").innerText = highScore;
-          }
-          alert("Time's up! Final score: " + score);
-          restartGame();
-        }
-      }, 1000);
-    }
-    
-    // Reset the timer for a new level.
-    function resetTimer() {
-      clearInterval(timerInterval);
-      timeLeft = 60;
-      document.getElementById("time").innerText = timeLeft;
-      startTimer();
-    }
-    
-    // Restart the game from the beginning.
-    function restartGame() {
-      clearInterval(timerInterval);
-      timerStarted = false;
-      score = 0;
-      streak = 0;
-      level = 1;
-      timeLeft = 60;
-      document.getElementById("score").innerText = score;
-      document.getElementById("streak").innerText = streak;
-      document.getElementById("level").innerText = level;
-      document.getElementById("time").innerText = timeLeft;
-      drawNote();
-    }
-    
-    // Generate clickable buttons for the current level.
-    function createNoteButtons() {
-      const container = document.getElementById("note-buttons");
-      container.innerHTML = "";
-      levels[level - 1].forEach(note => {
-        let button = document.createElement("button");
-        button.innerText = note[0];
-        button.onclick = () => {
-          if (!timerStarted) {
-            timerStarted = true;
-            startTimer();
-          }
-          checkAnswer(note[0]);
-        };
-        container.appendChild(button);
-      });
-    }
-    
-    // Update level based on score and reset timer if level increases.
-    function updateLevel() {
-      let newLevel = Math.min(levels.length, Math.floor(score / 200) + 1);
-      if (newLevel !== level) {
-        level = newLevel;
-        document.getElementById("level").innerText = level;
-        showLevelOverlay(level);
-        resetTimer();
-      }
-    }
-    
-    function checkAnswer(input) {
-      if (!timerStarted) {
-        timerStarted = true;
-        startTimer();
-      }
-      let expectedNote = correctNote[0].toUpperCase();
-      if (input.toUpperCase() === expectedNote) {
-        document.getElementById("correct-sound").play();
-        score += 10;
-        streak++;
-        document.getElementById("score").innerText = score;
-        document.getElementById("streak").innerText = streak;
-        // Combo logic: show pig combo if streak is a multiple of 5.
-        if (streak % 5 === 0) {
-          let pigCombo = document.getElementById("pig-combo");
-          pigCombo.style.display = "block";
-          pigCombo.style.opacity = 1;
-          document.getElementById("pig-streak").innerText = streak;
-          document.getElementById("bonus-sound").play();
-          // After a short delay, fade the image away over 3 seconds.
-          setTimeout(() => {
-            pigCombo.style.opacity = 0;
-            setTimeout(() => {
-              pigCombo.style.display = "none";
-            }, 3000);
-          }, 200);
-        }
-      } else {
-        document.getElementById("incorrect-sound").play();
-        streak = 0;
-        document.getElementById("streak").innerText = streak;
-      }
-      updateLevel();
-      drawNote();
-    }
-    
-    // Keyboard input: if a valid note key is pressed, check the answer.
-    document.addEventListener("keydown", function(event) {
-      let key = event.key.toUpperCase();
-      if (levels[level - 1].some(note => note[0].toUpperCase() === key)) {
-        if (!timerStarted) {
-          timerStarted = true;
-          startTimer();
-        }
-        checkAnswer(key);
-      }
-    });
-    
+
+    // =========================
+    // VexFlow draw
+    // =========================
     function drawNote() {
-      document.getElementById("staff").innerHTML = "<svg width='600' height='150'></svg>";
-      let notes = levels[level - 1];
+      staffEl.innerHTML = "";
+      renderer = new VF.Renderer(staffEl, VF.Renderer.Backends.SVG);
+      renderer.resize(300, 150);
+      context = renderer.getContext();
+      stave = new VF.Stave(10, 20, 280).addClef("treble").setContext(context).draw();
+
+      const notes = getLevelNotes();
       correctNote = notes[Math.floor(Math.random() * notes.length)];
-      const renderer = new Renderer(document.getElementById("staff").querySelector("svg"), Renderer.Backends.SVG);
-      renderer.resize(600, 150);
-      const context = renderer.getContext();
-      const stave = new Stave(10, 20, 550);
-      stave.addClef("treble").setContext(context).draw();
-      const note = new StaveNote({ keys: [correctNote], duration: "q" });
-      const voice = new Voice({ num_beats: 1, beat_value: 4 }).addTickables([note]);
-      new Formatter().joinVoices([voice]).format([voice], 500);
-      voice.draw(context, stave);
-      createNoteButtons();
+      correctMidi = noteStringToMidi(correctNote);
+
+      const { letter, accidental, octave } = parsePitch(correctNote);
+      const key = `${letter}${accidental}/${octave}`;
+
+      const note = new VF.StaveNote({ clef: "treble", keys: [key], duration: "q" });
+      if (accidental === "#") note.addAccidental(0, new VF.Accidental("#"));
+      if (accidental === "b") note.addAccidental(0, new VF.Accidental("b"));
+
+      VF.Formatter.FormatAndDraw(context, stave, [note]);
     }
-    
-    drawNote();
+
+    // =========================
+    // Keyboard: black keys always visible, never labeled
+    // =========================
+    const WHITE_LAYOUT = [
+      { n: "C", hasBlackRight: true },
+      { n: "D", hasBlackRight: true },
+      { n: "E", hasBlackRight: false },
+      { n: "F", hasBlackRight: true },
+      { n: "G", hasBlackRight: true },
+      { n: "A", hasBlackRight: true },
+      { n: "B", hasBlackRight: false },
+    ];
+
+    const SHARP_MAP = { C: "C#", D: "D#", F: "F#", G: "G#", A: "A#" };
+
+    function blackGuessNote(whiteLetter, octave) {
+      const name = SHARP_MAP[whiteLetter];
+      if (!name) return null;
+      return `${name}/${octave}`;
+    }
+
+    function getVisibleOctaves() {
+      const octs = new Set(NATURAL_NOTES.map(n => Number(String(n).split("/")[1])));
+      const arr = Array.from(octs).filter(Number.isFinite).sort((a,b) => a-b);
+      return arr.length ? arr : [4, 5];
+    }
+
+    function drawKeyboard() {
+      keyboardEl.innerHTML = "";
+
+      const allowedWhite = getLevelNotes()
+        .filter(n => !String(n).includes("#") && !String(n).includes("b"))
+        .map(n => n.toUpperCase());
+
+      const octaves = getVisibleOctaves();
+      const whiteKeyWidth = 40;
+
+      let whiteIndex = 0;
+
+      for (const octave of octaves) {
+        for (const w of WHITE_LAYOUT) {
+          const whiteNote = `${w.n}/${octave}`.toUpperCase();
+          if (!allowedWhite.includes(whiteNote)) continue;
+
+          const x = whiteIndex * whiteKeyWidth;
+
+          const white = document.createElement("div");
+          white.className = "white-key";
+          white.style.left = `${x}px`;
+          white.dataset.note = whiteNote;
+
+          white.onclick = () => {
+            if (inputLocked) return;
+            const note = `${w.n}/${octave}`;
+            playPianoNote(note, { resonateSeconds: 2.2 });
+            checkAnswer(note, white);
+          };
+
+          if (level < 10) {
+            const wl = document.createElement("div");
+            wl.className = "white-key-label";
+            wl.textContent = w.n;
+            white.appendChild(wl);
+          }
+
+          keyboardEl.appendChild(white);
+
+          if (w.hasBlackRight) {
+            const blackNote = blackGuessNote(w.n, octave);
+            if (blackNote) {
+              const black = document.createElement("div");
+              black.className = "black-key";
+              black.style.left = `${x + 28}px`;
+              black.dataset.note = blackNote.toUpperCase();
+
+              black.onclick = () => {
+                if (inputLocked) return;
+                playPianoNote(blackNote, { resonateSeconds: 2.2 });
+                checkAnswer(blackNote, black);
+              };
+
+              keyboardEl.appendChild(black);
+            }
+          }
+
+          whiteIndex++;
+        }
+      }
+
+      keyboardEl.style.width = `${whiteIndex * whiteKeyWidth}px`;
+    }
+
+    // =========================
+    // Combo overlays + Level up
+    // =========================
+    function randomFlyVars() {
+      const dir = Math.random() < 0.5 ? -1 : 1;
+      const x = dir * (110 + Math.random() * 110);
+      const y = -(110 + Math.random() * 120);
+      const spins = 1 + Math.floor(Math.random() * 3);
+      const spinDeg = (Math.random() < 0.5 ? -1 : 1) * spins * 360;
+      return { flyX: `${x}vw`, flyY: `${y}vh`, spinDeg: `${spinDeg}deg` };
+    }
+
+    function showComboOverlay(elId, bonus, { soundId = null } = {}) {
+      const combo = document.getElementById(elId);
+
+      const { flyX, flyY, spinDeg } = randomFlyVars();
+      combo.style.setProperty("--fly-x", flyX);
+      combo.style.setProperty("--fly-y", flyY);
+      combo.style.setProperty("--spin-deg", spinDeg);
+
+      combo.style.display = "block";
+      combo.style.animation = "none";
+      combo.offsetHeight;
+      combo.style.animation = `spinFlyVar ${COMBO_ANIM_MS}ms forwards`;
+
+      if (soundId) playSound(soundId);
+
+      const bonusMsg = document.getElementById("bonus-points");
+      bonusMsg.textContent = `+${bonus} Bonus!`;
+      bonusMsg.style.display = "block";
+      setTimeout(() => { bonusMsg.style.display = "none"; }, BONUS_MSG_MS);
+
+      setTimeout(() => { combo.style.display = "none"; }, COMBO_ANIM_MS);
+    }
+
+    function showLevelUp() {
+      const msg = document.getElementById("level-up-message");
+      msg.textContent = `LEVEL ${level}!`;
+      msg.style.display = "block";
+      setTimeout(() => { msg.style.display = "none"; }, 2000);
+    }
+
+    // =========================
+    // Answer checking
+    // =========================
+    function isCorrect(guessNote) {
+      const m = noteStringToMidi(guessNote);
+      return m !== null && correctMidi !== null && m === correctMidi;
+    }
+
+    function onCorrect() {
+      streak++;
+      correctsThisLevel++;
+
+      if (level >= 10) streakFromLevel10++;
+      if (level >= 15) streakFromLevel15++;
+
+      const bonus = Math.floor(streak / 5) * 5;
+      score += 10 + bonus;
+      playSound("correct-sound");
+
+      if (streak % 10 === 0) {
+        showComboOverlay("wiggles-combo", bonus, { soundId: "wiggles-sound" });
+      } else if (streak % 5 === 0) {
+        showComboOverlay("pig-combo", bonus, { soundId: "bonus-sound" });
+      }
+
+      if (correctsThisLevel >= CORRECTS_PER_LEVEL) {
+        correctsThisLevel = 0;
+        level++;
+        showLevelUp();
+      }
+    }
+
+    function onWrong() {
+      score = Math.max(0, score - 10);
+      streak = 0;
+      if (level >= 10) streakFromLevel10 = 0;
+      if (level >= 15) streakFromLevel15 = 0;
+      playSound("incorrect-sound");
+    }
+
+    function checkAnswer(note, keyEl = null) {
+      if (inputLocked) return;
+      if (!correctNote) return;
+
+      const ok = isCorrect(note);
+      if (ok) onCorrect();
+      else onWrong();
+
+      const el = keyEl || findKeyElementForNote(note);
+      flashKey(el, ok);
+
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem("highScore", String(highScore));
+      }
+
+      checkUnlockTransitions();
+      syncUi();
+
+      setTimeout(() => {
+        drawKeyboard();
+        drawNote();
+      }, Math.max(KEY_PRESS_MS, KEY_FLASH_MS));
+    }
+
+    // Typing: naturals only
+    document.addEventListener("keydown", (e) => {
+      if (inputLocked) return;
+      if (e.repeat) return;
+
+      const k = e.key.toUpperCase();
+      if (!["C", "D", "E", "F", "G", "A", "B"].includes(k)) return;
+      if (!correctNote) return;
+
+      const { accidental } = parsePitch(correctNote);
+      if (accidental) return;
+
+      const correctLetter = correctNote[0].toUpperCase();
+
+      if (k === correctLetter) {
+        playPianoNote(correctNote, { resonateSeconds: 2.2 });
+        checkAnswer(correctNote, findKeyElementForNote(correctNote));
+        return;
+      }
+
+      const levelNotes = getLevelNotes();
+      const wrongGuess = levelNotes.find(n => n.toUpperCase().startsWith(k));
+      if (!wrongGuess) return;
+
+      playPianoNote(wrongGuess, { resonateSeconds: 2.2 });
+      checkAnswer(wrongGuess, findKeyElementForNote(wrongGuess));
+    });
+
+    window.onload = () => {
+      checkUnlockTransitions();
+      syncUi();
+      drawKeyboard();
+      drawNote();
+    };
   </script>
 </body>
 </html>
